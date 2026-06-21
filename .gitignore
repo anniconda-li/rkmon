@@ -1,0 +1,20 @@
+# Build outputs
+/rkmon
+*.o
+*.d
+*.a
+*.so
+/build/
+
+# Generated tooling files
+compile_commands.json
+
+# Editor settings
+.vscode/
+.idea/
+*.swp
+*~
+
+# Operating system files
+.DS_Store
+Thumbs.db
