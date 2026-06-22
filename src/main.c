@@ -14,14 +14,15 @@
  */
 int main(void)
 {
-    printf("rkmon v0.2\n");
+    printf("rkmon v0.3\n");
     printf("====================\n");
 
     print_hostname();
-    print_cpu_temp();
+    print_soc_temp();
     print_uptime();
     print_loadavg();
     print_memory();
+    print_disk_root();
 
     return 0;
 }

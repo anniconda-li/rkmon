@@ -6,10 +6,11 @@
 
 - 程序版本
 - 系统主机名
-- CPU 温度
+- SoC 温度
 - 系统运行时间
 - 系统平均负载
 - 内存使用情况
+- 根分区使用情况
 
 ## 环境要求
 
@@ -43,13 +44,17 @@ make
 输出示例：
 
 ```text
-rkmon v0.2
+rkmon v0.3
 ====================
-hostname : rk3568
-cpu_temp : 45.2 C
-uptime   : 0 days 02:56:10
-loadavg  : 0.03 0.01 0.00 1/353 3465
-memory   : 479 MB / 3902 MB
+hostname    : rk3568
+soc_temp    : 50.0 C
+uptime      : 0 days 05:25:52
+loadavg     : 1min    5min    15min
+              0.00    0.00    0.00
+tasks       : running 3 / total 349
+last_pid    : 4174
+memory      : used 477 MB / total 3902 MB (12.2%)
+disk_root   : used 2300 MB / total 14500 MB (15.8%)
 ```
 
 ## 清理
@@ -74,10 +79,11 @@ make clean
 ## 系统状态数据说明
 
 - 主机名从 `/etc/hostname` 读取。
-- CPU 温度从 `/sys/class/thermal/thermal_zone0/temp` 读取。不同内核或设备树配置可能使用其他 thermal zone。
+- SoC 温度从 `/sys/class/thermal/thermal_zone0/temp` 读取；该 thermal zone 的类型为 `soc-thermal`。不同内核或设备树配置可能使用其他 thermal zone。
 - 系统运行时间从 `/proc/uptime` 读取，并显示为 `days HH:MM:SS`。
-- 系统平均负载从 `/proc/loadavg` 读取，当前版本直接打印完整一行。
-- 内存信息从 `/proc/meminfo` 读取，通过 `MemTotal - MemAvailable` 计算已用内存，并以 MB 为单位显示。
+- 系统平均负载从 `/proc/loadavg` 读取，分别显示 1、5、15 分钟负载、任务数量和最近创建的 PID。
+- 内存信息从 `/proc/meminfo` 读取，通过 `MemTotal - MemAvailable` 计算已用内存，并显示容量和使用率。
+- 根分区信息通过 `statvfs("/")` 获取，并显示已用容量、总容量和使用率。
 
 读取对应文件失败或数据无效时，程序会为该项目显示 `N/A`。
 
