@@ -15,6 +15,9 @@ compile_commands.json
 *.swp
 *~
 
+# Local agent instructions
+/AGENTS.md
+
 # Operating system files
 .DS_Store
 Thumbs.db
