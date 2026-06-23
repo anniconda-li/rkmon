@@ -1,5 +1,5 @@
 CC := gcc
-CFLAGS := -Wall -Wextra -O2
+CFLAGS := -Wall -Wextra -O2 -std=c11
 TARGET := rkmon
 SRC := src/main.c src/rkmon.c
 HEADERS := src/rkmon.h

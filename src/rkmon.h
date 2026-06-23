@@ -24,4 +24,19 @@ void print_memory(void);
 /** @brief 读取并打印根分区使用情况。 */
 void print_disk_root(void);
 
+/** @brief 读取并打印 wlan0 接口状态。 */
+void print_wlan0_state(void);
+
+/** @brief 获取并打印 wlan0 的 IPv4 地址。 */
+void print_wlan0_ip(void);
+
+/** @brief 读取并打印默认网关。 */
+void print_gateway(void);
+
+/** @brief 打印命令行帮助信息。 */
+void print_help(void);
+
+/** @brief 打印程序版本。 */
+void print_version(void);
+
 #endif

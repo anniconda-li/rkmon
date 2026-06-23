@@ -3,9 +3,13 @@
  * @brief rkmon 系统状态采集函数实现。
  */
 
+#include <arpa/inet.h>
+#include <ifaddrs.h>
+#include <netinet/in.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/socket.h>
 #include <sys/statvfs.h>
 
 #include "rkmon.h"
@@ -48,7 +52,7 @@ void print_hostname(void)
     char buf[BUF_SIZE];
 
     if (read_first_line("/etc/hostname", buf, sizeof(buf)) != 0) {
-        printf("%-*s: N/A\n", LABEL_WIDTH, "hostname");
+        printf("%-*s: unavailable\n", LABEL_WIDTH, "hostname");
         return;
     }
 
@@ -65,7 +69,7 @@ void print_soc_temp(void)
 
     if (read_first_line("/sys/class/thermal/thermal_zone0/temp",
                         buf, sizeof(buf)) != 0) {
-        printf("%-*s: N/A\n", LABEL_WIDTH, "soc_temp");
+        printf("%-*s: unavailable\n", LABEL_WIDTH, "soc_temp");
         return;
     }
 
@@ -91,7 +95,7 @@ void print_uptime(void)
         if (fp != NULL) {
             fclose(fp);
         }
-        printf("%-*s: N/A\n", LABEL_WIDTH, "uptime");
+        printf("%-*s: unavailable\n", LABEL_WIDTH, "uptime");
         return;
     }
 
@@ -127,7 +131,7 @@ void print_loadavg(void)
         if (fp != NULL) {
             fclose(fp);
         }
-        printf("%-*s: N/A\n", LABEL_WIDTH, "loadavg");
+        printf("%-*s: unavailable\n", LABEL_WIDTH, "loadavg");
         return;
     }
 
@@ -154,7 +158,7 @@ void print_memory(void)
     unsigned long available_kb = 0;
 
     if (fp == NULL) {
-        printf("%-*s: N/A\n", LABEL_WIDTH, "memory");
+        printf("%-*s: unavailable\n", LABEL_WIDTH, "memory");
         return;
     }
 
@@ -168,10 +172,16 @@ void print_memory(void)
         }
     }
 
+    if (ferror(fp)) {
+        fclose(fp);
+        printf("%-*s: unavailable\n", LABEL_WIDTH, "memory");
+        return;
+    }
+
     fclose(fp);
 
     if (total_kb == 0 || available_kb == 0 || available_kb > total_kb) {
-        printf("%-*s: N/A\n", LABEL_WIDTH, "memory");
+        printf("%-*s: unavailable\n", LABEL_WIDTH, "memory");
         return;
     }
 
@@ -197,11 +207,16 @@ void print_disk_root(void)
     double percent;
 
     if (statvfs("/", &fs) != 0 || fs.f_blocks == 0) {
-        printf("%-*s: N/A\n", LABEL_WIDTH, "disk_root");
+        printf("%-*s: unavailable\n", LABEL_WIDTH, "disk_root");
         return;
     }
 
     block_size = fs.f_frsize;
+    if (block_size == 0) {
+        printf("%-*s: unavailable\n", LABEL_WIDTH, "disk_root");
+        return;
+    }
+
     total_bytes = (unsigned long long)fs.f_blocks * block_size;
     used_bytes = (unsigned long long)(fs.f_blocks - fs.f_bfree) * block_size;
     percent = used_bytes * 100.0 / total_bytes;
@@ -209,4 +224,150 @@ void print_disk_root(void)
     printf("%-*s: used %llu MB / total %llu MB (%.1f%%)\n",
            LABEL_WIDTH, "disk_root", used_bytes / (1024 * 1024),
            total_bytes / (1024 * 1024), percent);
+}
+
+/**
+ * @brief 读取 /sys/class/net/wlan0/operstate，并打印 wlan0 接口状态。
+ */
+void print_wlan0_state(void)
+{
+    char state[BUF_SIZE];
+
+    if (read_first_line("/sys/class/net/wlan0/operstate",
+                        state, sizeof(state)) != 0) {
+        printf("%-*s: unavailable\n", LABEL_WIDTH, "wlan0_state");
+        return;
+    }
+
+    printf("%-*s: %s\n", LABEL_WIDTH, "wlan0_state", state);
+}
+
+/**
+ * @brief 使用 getifaddrs() 获取并打印 wlan0 的 IPv4 地址。
+ */
+void print_wlan0_ip(void)
+{
+    struct ifaddrs *ifaddr;
+    struct ifaddrs *ifa;
+    char ip[INET_ADDRSTRLEN];
+    int found = 0;
+
+    if (getifaddrs(&ifaddr) != 0) {
+        printf("%-*s: unavailable\n", LABEL_WIDTH, "wlan0_ip");
+        return;
+    }
+
+    for (ifa = ifaddr; ifa != NULL; ifa = ifa->ifa_next) {
+        struct sockaddr_in *addr;
+
+        if (ifa->ifa_addr == NULL) {
+            continue;
+        }
+
+        if (strcmp(ifa->ifa_name, "wlan0") != 0 ||
+            ifa->ifa_addr->sa_family != AF_INET) {
+            continue;
+        }
+
+        addr = (struct sockaddr_in *)ifa->ifa_addr;
+        if (inet_ntop(AF_INET, &addr->sin_addr, ip, sizeof(ip)) == NULL) {
+            continue;
+        }
+
+        printf("%-*s: %s\n", LABEL_WIDTH, "wlan0_ip", ip);
+        found = 1;
+        break;
+    }
+
+    freeifaddrs(ifaddr);
+
+    if (!found) {
+        printf("%-*s: unavailable\n", LABEL_WIDTH, "wlan0_ip");
+    }
+}
+
+/**
+ * @brief 解析 /proc/net/route，并打印默认网关及其网络接口。
+ */
+void print_gateway(void)
+{
+    FILE *fp = fopen("/proc/net/route", "r");
+    char line[BUF_SIZE];
+    int found = 0;
+
+    if (fp == NULL || fgets(line, sizeof(line), fp) == NULL) {
+        if (fp != NULL) {
+            fclose(fp);
+        }
+        printf("%-*s: unavailable\n", LABEL_WIDTH, "gateway");
+        return;
+    }
+
+    while (fgets(line, sizeof(line), fp) != NULL) {
+        char iface[32];
+        unsigned int destination;
+        unsigned int gateway;
+
+        if (sscanf(line, "%31s %x %x",
+                   iface, &destination, &gateway) != 3) {
+            continue;
+        }
+
+        if (destination == 0) {
+            unsigned char b1 = gateway & 0xff;
+            unsigned char b2 = (gateway >> 8) & 0xff;
+            unsigned char b3 = (gateway >> 16) & 0xff;
+            unsigned char b4 = (gateway >> 24) & 0xff;
+
+            printf("%-*s: %u.%u.%u.%u dev %s\n",
+                   LABEL_WIDTH, "gateway",
+                   (unsigned int)b1, (unsigned int)b2,
+                   (unsigned int)b3, (unsigned int)b4, iface);
+            found = 1;
+            break;
+        }
+    }
+
+    if (ferror(fp)) {
+        found = 0;
+    }
+
+    fclose(fp);
+
+    if (!found) {
+        printf("%-*s: unavailable\n", LABEL_WIDTH, "gateway");
+    }
+}
+
+/**
+ * @brief 打印 rkmon 命令行帮助信息。
+ */
+void print_help(void)
+{
+    printf("rkmon - RK3568 board status monitor\n\n");
+    printf("Usage:\n");
+    printf("rkmon [option]\n\n");
+    printf("Options:\n");
+    printf("--help       Show this help message\n");
+    printf("--version    Show version information\n\n");
+    printf("Default output:\n");
+    printf("hostname\n");
+    printf("soc_temp\n");
+    printf("uptime\n");
+    printf("loadavg\n");
+    printf("tasks\n");
+    printf("last_pid\n");
+    printf("memory\n");
+    printf("disk_root\n");
+    printf("wlan0_state\n");
+    printf("wlan0_ip\n");
+    printf("gateway\n");
+}
+
+/**
+ * @brief 打印 rkmon 程序版本。
+ */
+void print_version(void)
+{
+    printf("rkmon v0.4\n");
 }
