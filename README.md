@@ -11,6 +11,11 @@
 - 系统平均负载
 - 内存使用情况
 - 根分区使用情况
+- wlan0 接口状态
+- wlan0 IPv4 地址
+- 默认网关及其网络接口
+- `--help` 帮助参数
+- `--version` 版本参数
 
 ## 环境要求
 
@@ -39,12 +44,14 @@ make
 
 ```bash
 ./rkmon
+./rkmon --help
+./rkmon --version
 ```
 
 输出示例：
 
 ```text
-rkmon v0.3
+rkmon v0.4
 ====================
 hostname    : rk3568
 soc_temp    : 50.0 C
@@ -55,6 +62,21 @@ tasks       : running 3 / total 349
 last_pid    : 4174
 memory      : used 477 MB / total 3902 MB (12.2%)
 disk_root   : used 2300 MB / total 14500 MB (15.8%)
+wlan0_state : up
+wlan0_ip    : 192.168.3.216
+gateway     : 192.168.3.1 dev wlan0
+```
+
+查看帮助：
+
+```bash
+./rkmon --help
+```
+
+查看版本：
+
+```bash
+./rkmon --version
 ```
 
 ## 清理
@@ -84,8 +106,11 @@ make clean
 - 系统平均负载从 `/proc/loadavg` 读取，分别显示 1、5、15 分钟负载、任务数量和最近创建的 PID。
 - 内存信息从 `/proc/meminfo` 读取，通过 `MemTotal - MemAvailable` 计算已用内存，并显示容量和使用率。
 - 根分区信息通过 `statvfs("/")` 获取，并显示已用容量、总容量和使用率。
+- wlan0 接口状态从 `/sys/class/net/wlan0/operstate` 读取。
+- wlan0 IPv4 地址通过 `getifaddrs()` 获取。
+- 默认网关从 `/proc/net/route` 读取，并将十六进制小端地址转换为 IPv4 地址。
 
-读取对应文件失败或数据无效时，程序会为该项目显示 `N/A`。
+读取对应文件、调用系统接口失败或数据无效时，程序会为该项目显示 `unavailable`。
 
 ## 许可证
 
