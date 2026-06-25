@@ -349,19 +349,14 @@ void print_help(void)
     printf("rkmon [option]\n\n");
     printf("Options:\n");
     printf("--help       Show this help message\n");
-    printf("--version    Show version information\n\n");
-    printf("Default output:\n");
-    printf("hostname\n");
-    printf("soc_temp\n");
-    printf("uptime\n");
-    printf("loadavg\n");
-    printf("tasks\n");
-    printf("last_pid\n");
-    printf("memory\n");
-    printf("disk_root\n");
-    printf("wlan0_state\n");
-    printf("wlan0_ip\n");
-    printf("gateway\n");
+    printf("--version    Show version information\n");
+    printf("--system     Show system information\n");
+    printf("--network    Show network information\n");
+    printf("--temp       Show SoC temperature\n");
+    printf("--memory     Show memory usage\n");
+    printf("--disk       Show root disk usage\n\n");
+    printf("Default:\n");
+    printf("Show all status information\n");
 }
 
 /**
@@ -369,5 +364,5 @@ void print_help(void)
  */
 void print_version(void)
 {
-    printf("rkmon v0.4\n");
+    printf("rkmon %s\n", RKMON_VERSION);
 }

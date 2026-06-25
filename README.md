@@ -16,6 +16,11 @@
 - 默认网关及其网络接口
 - `--help` 帮助参数
 - `--version` 版本参数
+- `--system` 系统基础信息查询参数
+- `--network` 网络信息查询参数
+- `--temp` 温度查询参数
+- `--memory` 内存查询参数
+- `--disk` 根分区磁盘查询参数
 
 ## 环境要求
 
@@ -46,12 +51,17 @@ make
 ./rkmon
 ./rkmon --help
 ./rkmon --version
+./rkmon --system
+./rkmon --network
+./rkmon --temp
+./rkmon --memory
+./rkmon --disk
 ```
 
 输出示例：
 
 ```text
-rkmon v0.4
+rkmon v0.5
 ====================
 hostname    : rk3568
 soc_temp    : 50.0 C
@@ -77,6 +87,16 @@ gateway     : 192.168.3.1 dev wlan0
 
 ```bash
 ./rkmon --version
+```
+
+单项或分组查询：
+
+```bash
+./rkmon --system
+./rkmon --network
+./rkmon --temp
+./rkmon --memory
+./rkmon --disk
 ```
 
 ## 清理
@@ -111,6 +131,26 @@ make clean
 - 默认网关从 `/proc/net/route` 读取，并将十六进制小端地址转换为 IPv4 地址。
 
 读取对应文件、调用系统接口失败或数据无效时，程序会为该项目显示 `unavailable`。
+
+## 版本历史
+
+### v0.5
+
+- Add single/group query options
+- Add `--system`
+- Add `--network`
+- Add `--temp`
+- Add `--memory`
+- Add `--disk`
+- Centralize version string with `RKMON_VERSION`
+
+### v0.4
+
+- Add `wlan0_state`
+- Add `wlan0_ip`
+- Add default gateway
+- Add `--help`
+- Add `--version`
 
 ## 许可证
 
