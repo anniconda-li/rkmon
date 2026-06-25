@@ -95,8 +95,10 @@ static int parse_watch_interval(const char *s, unsigned int *interval)
  */
 static void watch_all_info(unsigned int interval)
 {
+    printf("\033[2J\033[H");
+
     while (1) {
-        printf("\033[2J\033[H");
+        printf("\033[H");
         print_all_info();
         fflush(stdout);
         sleep(interval);

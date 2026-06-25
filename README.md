@@ -65,7 +65,7 @@ make
 输出示例：
 
 ```text
-rkmon v0.6
+rkmon v0.6.1
 ====================
 hostname    : rk3568
 soc_temp    : 50.0 C
@@ -111,7 +111,7 @@ gateway     : 192.168.3.1 dev wlan0
 ./rkmon --watch 5
 ```
 
-`--watch N` 会每隔 N 秒清屏刷新一次完整状态，按 `Ctrl+C` 退出。
+`--watch N` 会每隔 N 秒刷新一次完整状态，进入 watch 模式时清屏一次，后续刷新时只把光标移动到左上角并覆盖旧内容，以减少终端闪烁。按 `Ctrl+C` 退出。
 
 以下参数会返回错误：
 
@@ -155,6 +155,13 @@ make clean
 读取对应文件、调用系统接口失败或数据无效时，程序会为该项目显示 `unavailable`。
 
 ## 版本历史
+
+### v0.6.1
+
+- Optimize `--watch` refresh mode
+- Clear screen only once when entering watch mode
+- Move cursor to top-left on each refresh
+- Reduce terminal flicker
 
 ### v0.6
 
