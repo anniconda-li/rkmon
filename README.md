@@ -21,6 +21,7 @@
 - `--temp` 温度查询参数
 - `--memory` 内存查询参数
 - `--disk` 根分区磁盘查询参数
+- `--watch N` 清屏刷新完整状态
 
 ## 环境要求
 
@@ -56,12 +57,15 @@ make
 ./rkmon --temp
 ./rkmon --memory
 ./rkmon --disk
+./rkmon --watch 1
+./rkmon --watch 2
+./rkmon --watch 5
 ```
 
 输出示例：
 
 ```text
-rkmon v0.5
+rkmon v0.6
 ====================
 hostname    : rk3568
 soc_temp    : 50.0 C
@@ -99,6 +103,24 @@ gateway     : 192.168.3.1 dev wlan0
 ./rkmon --disk
 ```
 
+清屏刷新完整状态：
+
+```bash
+./rkmon --watch 1
+./rkmon --watch 2
+./rkmon --watch 5
+```
+
+`--watch N` 会每隔 N 秒清屏刷新一次完整状态，按 `Ctrl+C` 退出。
+
+以下参数会返回错误：
+
+```bash
+./rkmon --watch 0
+./rkmon --watch abc
+./rkmon --watch -1
+```
+
 ## 清理
 
 ```bash
@@ -133,6 +155,13 @@ make clean
 读取对应文件、调用系统接口失败或数据无效时，程序会为该项目显示 `unavailable`。
 
 ## 版本历史
+
+### v0.6
+
+- Add `--watch N` refresh mode
+- Clear screen before each refresh
+- Validate watch interval with `strtol`
+- Reuse full status output function
 
 ### v0.5
 

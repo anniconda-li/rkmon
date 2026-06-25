@@ -7,7 +7,7 @@
 #define RKMON_H
 
 /** @brief rkmon 当前版本号。 */
-#define RKMON_VERSION "v0.5"
+#define RKMON_VERSION "v0.6"
 
 /** @brief 读取并打印系统主机名。 */
 void print_hostname(void);

@@ -347,6 +347,7 @@ void print_help(void)
     printf("rkmon - RK3568 board status monitor\n\n");
     printf("Usage:\n");
     printf("rkmon [option]\n\n");
+    printf("rkmon --watch N\n\n");
     printf("Options:\n");
     printf("--help       Show this help message\n");
     printf("--version    Show version information\n");
@@ -354,9 +355,13 @@ void print_help(void)
     printf("--network    Show network information\n");
     printf("--temp       Show SoC temperature\n");
     printf("--memory     Show memory usage\n");
-    printf("--disk       Show root disk usage\n\n");
+    printf("--disk       Show root disk usage\n");
+    printf("--watch N    Refresh all status every N seconds\n\n");
     printf("Default:\n");
-    printf("Show all status information\n");
+    printf("Show all status information once\n\n");
+    printf("Watch:\n");
+    printf("N must be an integer from 1 to 3600\n");
+    printf("Press Ctrl+C to stop\n");
 }
 
 /**
