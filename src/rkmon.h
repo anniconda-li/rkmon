@@ -7,7 +7,7 @@
 #define RKMON_H
 
 /** @brief rkmon 当前版本号。 */
-#define RKMON_VERSION "v0.6.1"
+#define RKMON_VERSION "v0.7"
 
 /** @brief 读取并打印系统主机名。 */
 void print_hostname(void);
@@ -35,6 +35,9 @@ void print_wlan0_ip(void);
 
 /** @brief 读取并打印默认网关。 */
 void print_gateway(void);
+
+/** @brief 以 JSON 格式打印完整状态。 */
+void print_json(void);
 
 /** @brief 打印命令行帮助信息。 */
 void print_help(void);

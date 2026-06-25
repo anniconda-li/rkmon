@@ -179,6 +179,11 @@ int main(int argc, char *argv[])
         return 0;
     }
 
+    if (strcmp(argv[1], "--json") == 0) {
+        print_json();
+        return 0;
+    }
+
     if (strcmp(argv[1], "--watch") == 0) {
         fprintf(stderr, "missing watch interval\n");
         fprintf(stderr, "usage: rkmon --watch N\n");

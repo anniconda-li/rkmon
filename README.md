@@ -21,6 +21,7 @@
 - `--temp` 温度查询参数
 - `--memory` 内存查询参数
 - `--disk` 根分区磁盘查询参数
+- `--json` JSON 完整状态输出
 - `--watch N` 清屏刷新完整状态
 
 ## 环境要求
@@ -57,6 +58,7 @@ make
 ./rkmon --temp
 ./rkmon --memory
 ./rkmon --disk
+./rkmon --json
 ./rkmon --watch 1
 ./rkmon --watch 2
 ./rkmon --watch 5
@@ -65,7 +67,7 @@ make
 输出示例：
 
 ```text
-rkmon v0.6.1
+rkmon v0.7
 ====================
 hostname    : rk3568
 soc_temp    : 50.0 C
@@ -102,6 +104,14 @@ gateway     : 192.168.3.1 dev wlan0
 ./rkmon --memory
 ./rkmon --disk
 ```
+
+JSON 输出：
+
+```bash
+./rkmon --json
+```
+
+`--json` 会输出完整状态的 JSON 对象，方便后续脚本处理、日志记录、systemd 服务或 HTTP 上报使用。
 
 清屏刷新完整状态：
 
@@ -155,6 +165,13 @@ make clean
 读取对应文件、调用系统接口失败或数据无效时，程序会为该项目显示 `unavailable`。
 
 ## 版本历史
+
+### v0.7
+
+- Add `--json` output
+- Add internal `get_xxx` data collection helpers
+- Keep existing text output
+- Use `null` for unavailable JSON fields
 
 ### v0.6.1
 
