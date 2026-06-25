@@ -6,11 +6,13 @@
 #include <arpa/inet.h>
 #include <ifaddrs.h>
 #include <netinet/in.h>
+#include <stdarg.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <sys/socket.h>
 #include <sys/statvfs.h>
+#include <unistd.h>
 
 #include "rkmon.h"
 
@@ -641,29 +643,57 @@ void print_gateway(void)
 }
 
 /**
- * @brief 使用 get_xxx() 采集完整状态，并以 JSON 对象格式输出。
+ * @brief 安全追加格式化内容到 JSON 缓冲区。
  */
-void print_json(void)
+static int append_json(char **pos, size_t *remaining, const char *fmt, ...)
 {
-    char hostname[BUF_SIZE];
-    double soc_temp_c;
-    unsigned long uptime_sec;
-    double load1;
-    double load5;
-    double load15;
-    unsigned int running_tasks;
-    unsigned int total_tasks;
-    unsigned int last_pid;
-    unsigned long memory_used_mb;
-    unsigned long memory_total_mb;
-    double memory_percent;
-    unsigned long disk_used_mb;
-    unsigned long disk_total_mb;
-    double disk_percent;
-    char wlan0_state[BUF_SIZE];
-    char wlan0_ip[INET_ADDRSTRLEN];
-    char gateway_ip[INET_ADDRSTRLEN];
-    char gateway_iface[32];
+    va_list args;
+    int written;
+
+    if (pos == NULL || *pos == NULL || remaining == NULL ||
+        *remaining == 0 || fmt == NULL) {
+        return -1;
+    }
+
+    va_start(args, fmt);
+    written = vsnprintf(*pos, *remaining, fmt, args);
+    va_end(args);
+
+    if (written < 0 || (size_t)written >= *remaining) {
+        return -1;
+    }
+
+    *pos += written;
+    *remaining -= (size_t)written;
+    return 0;
+}
+
+/**
+ * @brief 使用 get_xxx() 采集完整状态，并构建 JSON 字符串。
+ */
+int build_json(char *buf, size_t size)
+{
+    char *pos = buf;
+    size_t remaining = size;
+    char hostname[BUF_SIZE] = "";
+    double soc_temp_c = 0.0;
+    unsigned long uptime_sec = 0;
+    double load1 = 0.0;
+    double load5 = 0.0;
+    double load15 = 0.0;
+    unsigned int running_tasks = 0;
+    unsigned int total_tasks = 0;
+    unsigned int last_pid = 0;
+    unsigned long memory_used_mb = 0;
+    unsigned long memory_total_mb = 0;
+    double memory_percent = 0.0;
+    unsigned long disk_used_mb = 0;
+    unsigned long disk_total_mb = 0;
+    double disk_percent = 0.0;
+    char wlan0_state[BUF_SIZE] = "";
+    char wlan0_ip[INET_ADDRSTRLEN] = "";
+    char gateway_ip[INET_ADDRSTRLEN] = "";
+    char gateway_iface[32] = "";
     int has_hostname;
     int has_soc_temp;
     int has_uptime;
@@ -673,6 +703,10 @@ void print_json(void)
     int has_wlan0_state;
     int has_wlan0_ip;
     int has_gateway;
+
+    if (buf == NULL || size == 0) {
+        return -1;
+    }
 
     has_hostname = (get_hostname(hostname, sizeof(hostname)) == 0);
     has_soc_temp = (get_soc_temp(&soc_temp_c) == 0);
@@ -690,86 +724,210 @@ void print_json(void)
     has_gateway = (get_gateway(gateway_ip, sizeof(gateway_ip),
                                gateway_iface, sizeof(gateway_iface)) == 0);
 
-    printf("{\n");
-    printf("  \"version\": \"%s\",\n", RKMON_VERSION);
+    if (append_json(&pos, &remaining, "{\n") != 0 ||
+        append_json(&pos, &remaining,
+                    "  \"version\": \"%s\",\n", RKMON_VERSION) != 0) {
+        return -1;
+    }
 
     if (has_hostname) {
-        printf("  \"hostname\": \"%s\",\n", hostname);
-    } else {
-        printf("  \"hostname\": null,\n");
+        if (append_json(&pos, &remaining,
+                        "  \"hostname\": \"%s\",\n", hostname) != 0) {
+            return -1;
+        }
+    } else if (append_json(&pos, &remaining,
+                           "  \"hostname\": null,\n") != 0) {
+        return -1;
     }
 
     if (has_soc_temp) {
-        printf("  \"soc_temp_c\": %.1f,\n", soc_temp_c);
-    } else {
-        printf("  \"soc_temp_c\": null,\n");
+        if (append_json(&pos, &remaining,
+                        "  \"soc_temp_c\": %.1f,\n", soc_temp_c) != 0) {
+            return -1;
+        }
+    } else if (append_json(&pos, &remaining,
+                           "  \"soc_temp_c\": null,\n") != 0) {
+        return -1;
     }
 
     if (has_uptime) {
-        printf("  \"uptime_sec\": %lu,\n", uptime_sec);
-    } else {
-        printf("  \"uptime_sec\": null,\n");
+        if (append_json(&pos, &remaining,
+                        "  \"uptime_sec\": %lu,\n", uptime_sec) != 0) {
+            return -1;
+        }
+    } else if (append_json(&pos, &remaining,
+                           "  \"uptime_sec\": null,\n") != 0) {
+        return -1;
     }
 
     if (has_loadavg) {
-        printf("  \"loadavg\": {\n");
-        printf("    \"1min\": %.2f,\n", load1);
-        printf("    \"5min\": %.2f,\n", load5);
-        printf("    \"15min\": %.2f\n", load15);
-        printf("  },\n");
-        printf("  \"tasks\": {\n");
-        printf("    \"running\": %u,\n", running_tasks);
-        printf("    \"total\": %u\n", total_tasks);
-        printf("  },\n");
-        printf("  \"last_pid\": %u,\n", last_pid);
-    } else {
-        printf("  \"loadavg\": null,\n");
-        printf("  \"tasks\": null,\n");
-        printf("  \"last_pid\": null,\n");
+        if (append_json(&pos, &remaining, "  \"loadavg\": {\n") != 0 ||
+            append_json(&pos, &remaining,
+                        "    \"1min\": %.2f,\n", load1) != 0 ||
+            append_json(&pos, &remaining,
+                        "    \"5min\": %.2f,\n", load5) != 0 ||
+            append_json(&pos, &remaining,
+                        "    \"15min\": %.2f\n", load15) != 0 ||
+            append_json(&pos, &remaining, "  },\n") != 0 ||
+            append_json(&pos, &remaining, "  \"tasks\": {\n") != 0 ||
+            append_json(&pos, &remaining,
+                        "    \"running\": %u,\n", running_tasks) != 0 ||
+            append_json(&pos, &remaining,
+                        "    \"total\": %u\n", total_tasks) != 0 ||
+            append_json(&pos, &remaining, "  },\n") != 0 ||
+            append_json(&pos, &remaining,
+                        "  \"last_pid\": %u,\n", last_pid) != 0) {
+            return -1;
+        }
+    } else if (append_json(&pos, &remaining, "  \"loadavg\": null,\n") != 0 ||
+               append_json(&pos, &remaining, "  \"tasks\": null,\n") != 0 ||
+               append_json(&pos, &remaining, "  \"last_pid\": null,\n") != 0) {
+        return -1;
     }
 
     if (has_memory) {
-        printf("  \"memory\": {\n");
-        printf("    \"used_mb\": %lu,\n", memory_used_mb);
-        printf("    \"total_mb\": %lu,\n", memory_total_mb);
-        printf("    \"used_percent\": %.1f\n", memory_percent);
-        printf("  },\n");
-    } else {
-        printf("  \"memory\": null,\n");
+        if (append_json(&pos, &remaining, "  \"memory\": {\n") != 0 ||
+            append_json(&pos, &remaining,
+                        "    \"used_mb\": %lu,\n", memory_used_mb) != 0 ||
+            append_json(&pos, &remaining,
+                        "    \"total_mb\": %lu,\n", memory_total_mb) != 0 ||
+            append_json(&pos, &remaining,
+                        "    \"used_percent\": %.1f\n",
+                        memory_percent) != 0 ||
+            append_json(&pos, &remaining, "  },\n") != 0) {
+            return -1;
+        }
+    } else if (append_json(&pos, &remaining, "  \"memory\": null,\n") != 0) {
+        return -1;
     }
 
     if (has_disk) {
-        printf("  \"disk_root\": {\n");
-        printf("    \"used_mb\": %lu,\n", disk_used_mb);
-        printf("    \"total_mb\": %lu,\n", disk_total_mb);
-        printf("    \"used_percent\": %.1f\n", disk_percent);
-        printf("  },\n");
-    } else {
-        printf("  \"disk_root\": null,\n");
+        if (append_json(&pos, &remaining, "  \"disk_root\": {\n") != 0 ||
+            append_json(&pos, &remaining,
+                        "    \"used_mb\": %lu,\n", disk_used_mb) != 0 ||
+            append_json(&pos, &remaining,
+                        "    \"total_mb\": %lu,\n", disk_total_mb) != 0 ||
+            append_json(&pos, &remaining,
+                        "    \"used_percent\": %.1f\n",
+                        disk_percent) != 0 ||
+            append_json(&pos, &remaining, "  },\n") != 0) {
+            return -1;
+        }
+    } else if (append_json(&pos, &remaining,
+                           "  \"disk_root\": null,\n") != 0) {
+        return -1;
     }
 
-    printf("  \"network\": {\n");
+    if (append_json(&pos, &remaining, "  \"network\": {\n") != 0) {
+        return -1;
+    }
+
     if (has_wlan0_state) {
-        printf("    \"wlan0_state\": \"%s\",\n", wlan0_state);
-    } else {
-        printf("    \"wlan0_state\": null,\n");
+        if (append_json(&pos, &remaining,
+                        "    \"wlan0_state\": \"%s\",\n",
+                        wlan0_state) != 0) {
+            return -1;
+        }
+    } else if (append_json(&pos, &remaining,
+                           "    \"wlan0_state\": null,\n") != 0) {
+        return -1;
     }
 
     if (has_wlan0_ip) {
-        printf("    \"wlan0_ip\": \"%s\",\n", wlan0_ip);
-    } else {
-        printf("    \"wlan0_ip\": null,\n");
+        if (append_json(&pos, &remaining,
+                        "    \"wlan0_ip\": \"%s\",\n", wlan0_ip) != 0) {
+            return -1;
+        }
+    } else if (append_json(&pos, &remaining,
+                           "    \"wlan0_ip\": null,\n") != 0) {
+        return -1;
     }
 
     if (has_gateway) {
-        printf("    \"gateway\": \"%s\",\n", gateway_ip);
-        printf("    \"gateway_iface\": \"%s\"\n", gateway_iface);
-    } else {
-        printf("    \"gateway\": null,\n");
-        printf("    \"gateway_iface\": null\n");
+        if (append_json(&pos, &remaining,
+                        "    \"gateway\": \"%s\",\n", gateway_ip) != 0 ||
+            append_json(&pos, &remaining,
+                        "    \"gateway_iface\": \"%s\"\n",
+                        gateway_iface) != 0) {
+            return -1;
+        }
+    } else if (append_json(&pos, &remaining,
+                           "    \"gateway\": null,\n") != 0 ||
+               append_json(&pos, &remaining,
+                           "    \"gateway_iface\": null\n") != 0) {
+        return -1;
     }
-    printf("  }\n");
-    printf("}\n");
+
+    if (append_json(&pos, &remaining, "  }\n") != 0 ||
+        append_json(&pos, &remaining, "}") != 0) {
+        return -1;
+    }
+
+    return (int)(pos - buf);
+}
+
+/**
+ * @brief 使用 build_json() 构建并打印完整状态 JSON。
+ */
+void print_json(void)
+{
+    char json[4096];
+
+    if (build_json(json, sizeof(json)) < 0) {
+        fprintf(stderr, "failed to build JSON\n");
+        return;
+    }
+
+    printf("%s\n", json);
+}
+
+/**
+ * @brief 通过 UDP 发送完整状态 JSON。
+ */
+int send_udp_report(const char *ip, unsigned short port)
+{
+    char json[4096];
+    int json_len;
+    int sockfd;
+    ssize_t sent;
+    struct sockaddr_in addr;
+
+    if (ip == NULL || port == 0) {
+        return -1;
+    }
+
+    json_len = build_json(json, sizeof(json));
+    if (json_len < 0) {
+        fprintf(stderr, "failed to build JSON\n");
+        return -1;
+    }
+
+    sockfd = socket(AF_INET, SOCK_DGRAM, 0);
+    if (sockfd < 0) {
+        perror("socket");
+        return -1;
+    }
+
+    memset(&addr, 0, sizeof(addr));
+    addr.sin_family = AF_INET;
+    addr.sin_port = htons(port);
+
+    if (inet_pton(AF_INET, ip, &addr.sin_addr) != 1) {
+        perror("inet_pton");
+        close(sockfd);
+        return -1;
+    }
+
+    sent = sendto(sockfd, json, (size_t)json_len, 0,
+                  (struct sockaddr *)&addr, sizeof(addr));
+    if (sent < 0) {
+        perror("sendto");
+        close(sockfd);
+        return -1;
+    }
+
+    close(sockfd);
+    return (int)sent;
 }
 
 /**
@@ -779,8 +937,9 @@ void print_help(void)
 {
     printf("rkmon - RK3568 board status monitor\n\n");
     printf("Usage:\n");
-    printf("rkmon [option]\n\n");
-    printf("rkmon --watch N\n\n");
+    printf("rkmon [option]\n");
+    printf("rkmon --watch N\n");
+    printf("rkmon --udp <ip> <port>\n\n");
     printf("Options:\n");
     printf("--help       Show this help message\n");
     printf("--version    Show version information\n");
@@ -790,12 +949,16 @@ void print_help(void)
     printf("--memory     Show memory usage\n");
     printf("--disk       Show root disk usage\n");
     printf("--json       Show all status in JSON format\n");
-    printf("--watch N    Refresh all status every N seconds\n\n");
+    printf("--watch N    Refresh all status every N seconds\n");
+    printf("--udp IP P   Send JSON report to UDP IP:port\n\n");
     printf("Default:\n");
     printf("Show all status information once\n\n");
     printf("Watch:\n");
     printf("N must be an integer from 1 to 3600\n");
-    printf("Press Ctrl+C to stop\n");
+    printf("Press Ctrl+C to stop\n\n");
+    printf("UDP:\n");
+    printf("Example:\n");
+    printf("rkmon --udp 192.168.3.100 9000\n");
 }
 
 /**

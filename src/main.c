@@ -13,6 +13,7 @@
 #include "rkmon.h"
 
 #define WATCH_MAX_INTERVAL 3600
+#define UDP_MAX_PORT 65535
 
 /**
  * @brief 输出完整系统状态。
@@ -89,6 +90,41 @@ static int parse_watch_interval(const char *s, unsigned int *interval)
 }
 
 /**
+ * @brief 解析 UDP 目标端口。
+ *
+ * @param s 待解析的字符串。
+ * @param port 保存解析后的端口号。
+ * @return 解析成功返回 0，解析失败返回 -1。
+ */
+static int parse_port(const char *s, unsigned short *port)
+{
+    char *endptr = NULL;
+    long value;
+
+    if (s == NULL || port == NULL || s[0] == '\0') {
+        return -1;
+    }
+
+    errno = 0;
+    value = strtol(s, &endptr, 10);
+
+    if (errno != 0 || endptr == s || *endptr != '\0') {
+        return -1;
+    }
+
+    if (value <= 0 || value > UDP_MAX_PORT) {
+        return -1;
+    }
+
+    if (value == LONG_MIN || value == LONG_MAX) {
+        return -1;
+    }
+
+    *port = (unsigned short)value;
+    return 0;
+}
+
+/**
  * @brief 清屏并按指定间隔持续刷新完整状态。
  *
  * @param interval 刷新间隔，单位为秒。
@@ -115,19 +151,51 @@ static void watch_all_info(unsigned int interval)
 int main(int argc, char *argv[])
 {
     unsigned int interval;
+    unsigned short port;
+    int ret;
 
     if (argc == 1) {
         print_all_info();
         return 0;
     }
 
-    if (argc > 3) {
+    if (argc > 4) {
         fprintf(stderr, "too many arguments\n");
         fprintf(stderr, "try: rkmon --help\n");
         return 1;
     }
 
+    if (argc == 4) {
+        if (strcmp(argv[1], "--udp") != 0) {
+            fprintf(stderr, "unknown option combination\n");
+            fprintf(stderr, "try: rkmon --help\n");
+            return 1;
+        }
+
+        if (parse_port(argv[3], &port) != 0) {
+            fprintf(stderr, "invalid UDP port: %s\n", argv[3]);
+            fprintf(stderr, "usage: rkmon --udp <ip> <port>\n");
+            return 1;
+        }
+
+        ret = send_udp_report(argv[2], port);
+        if (ret < 0) {
+            fprintf(stderr, "failed to send UDP report\n");
+            return 1;
+        }
+
+        printf("sent %d bytes to %s:%u\n",
+               ret, argv[2], (unsigned int)port);
+        return 0;
+    }
+
     if (argc == 3) {
+        if (strcmp(argv[1], "--udp") == 0) {
+            fprintf(stderr, "missing UDP port\n");
+            fprintf(stderr, "usage: rkmon --udp <ip> <port>\n");
+            return 1;
+        }
+
         if (strcmp(argv[1], "--watch") != 0) {
             fprintf(stderr, "unknown option combination\n");
             fprintf(stderr, "try: rkmon --help\n");
@@ -187,6 +255,12 @@ int main(int argc, char *argv[])
     if (strcmp(argv[1], "--watch") == 0) {
         fprintf(stderr, "missing watch interval\n");
         fprintf(stderr, "usage: rkmon --watch N\n");
+        return 1;
+    }
+
+    if (strcmp(argv[1], "--udp") == 0) {
+        fprintf(stderr, "missing UDP target\n");
+        fprintf(stderr, "usage: rkmon --udp <ip> <port>\n");
         return 1;
     }
 

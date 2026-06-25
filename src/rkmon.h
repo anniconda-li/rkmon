@@ -6,8 +6,10 @@
 #ifndef RKMON_H
 #define RKMON_H
 
+#include <stddef.h>
+
 /** @brief rkmon 当前版本号。 */
-#define RKMON_VERSION "v0.7"
+#define RKMON_VERSION "v0.8"
 
 /** @brief 读取并打印系统主机名。 */
 void print_hostname(void);
@@ -38,6 +40,12 @@ void print_gateway(void);
 
 /** @brief 以 JSON 格式打印完整状态。 */
 void print_json(void);
+
+/** @brief 构建完整状态 JSON 字符串。 */
+int build_json(char *buf, size_t size);
+
+/** @brief 通过 UDP 发送完整状态 JSON。 */
+int send_udp_report(const char *ip, unsigned short port);
 
 /** @brief 打印命令行帮助信息。 */
 void print_help(void);

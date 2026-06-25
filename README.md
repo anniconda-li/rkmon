@@ -23,6 +23,7 @@
 - `--disk` 根分区磁盘查询参数
 - `--json` JSON 完整状态输出
 - `--watch N` 清屏刷新完整状态
+- `--udp <ip> <port>` UDP JSON 上报
 
 ## 环境要求
 
@@ -62,12 +63,13 @@ make
 ./rkmon --watch 1
 ./rkmon --watch 2
 ./rkmon --watch 5
+./rkmon --udp 192.168.3.100 9000
 ```
 
 输出示例：
 
 ```text
-rkmon v0.7
+rkmon v0.8
 ====================
 hostname    : rk3568
 soc_temp    : 50.0 C
@@ -113,6 +115,34 @@ JSON 输出：
 
 `--json` 会输出完整状态的 JSON 对象，方便后续脚本处理、日志记录、systemd 服务或 HTTP 上报使用。
 
+UDP JSON 上报：
+
+```bash
+./rkmon --udp 192.168.3.100 9000
+```
+
+`--udp <ip> <port>` 会采集一次完整状态，生成 JSON 字符串，并通过 UDP 发送到指定 IP 和端口。
+
+在电脑或服务器上监听 UDP：
+
+```bash
+nc -ul 9000
+```
+
+如果这个命令不可用，可以尝试：
+
+```bash
+nc -u -l -p 9000
+```
+
+然后在板子上执行：
+
+```bash
+./rkmon --udp 192.168.3.100 9000
+```
+
+预期电脑或服务器终端收到一段 JSON。
+
 清屏刷新完整状态：
 
 ```bash
@@ -129,6 +159,11 @@ JSON 输出：
 ./rkmon --watch 0
 ./rkmon --watch abc
 ./rkmon --watch -1
+./rkmon --udp
+./rkmon --udp 192.168.3.100
+./rkmon --udp 192.168.3.100 abc
+./rkmon --udp 192.168.3.100 0
+./rkmon --udp 192.168.3.100 65536
 ```
 
 ## 清理
@@ -165,6 +200,14 @@ make clean
 读取对应文件、调用系统接口失败或数据无效时，程序会为该项目显示 `unavailable`。
 
 ## 版本历史
+
+### v0.8
+
+- Add UDP JSON report
+- Add `build_json()` to reuse JSON output
+- Add `send_udp_report()`
+- Add `--udp <ip> <port>`
+- Validate UDP port with `strtol`
 
 ### v0.7
 
