@@ -69,7 +69,7 @@ make
 输出示例：
 
 ```text
-rkmon v0.8
+rkmon v0.9
 ====================
 hostname    : rk3568
 soc_temp    : 50.0 C
@@ -180,10 +180,26 @@ make clean
 |-- README.md
 |-- src/
 |   |-- main.c
-|   |-- rkmon.c
-|   `-- rkmon.h
+|   |-- rkmon.h
+|   |-- collect.c
+|   |-- collect.h
+|   |-- output.c
+|   |-- output.h
+|   |-- net.c
+|   `-- net.h
 `-- LICENSE
 ```
+
+源码职责划分：
+
+- `src/main.c`：参数解析和主流程。
+- `src/rkmon.h`：公共宏和 `RkmonStatus` 状态结构体。
+- `src/collect.c`：状态采集。
+- `src/collect.h`：状态采集接口。
+- `src/output.c`：文本输出和 JSON 输出。
+- `src/output.h`：输出接口。
+- `src/net.c`：UDP 网络发送。
+- `src/net.h`：网络发送接口。
 
 ## 系统状态数据说明
 
@@ -200,6 +216,14 @@ make clean
 读取对应文件、调用系统接口失败或数据无效时，程序会为该项目显示 `unavailable`。
 
 ## 版本历史
+
+### v0.9
+
+- Refactor project structure
+- Add `RkmonStatus` data structure
+- Split collection, output, and network code
+- Keep all v0.8 features unchanged
+- Prepare for future HTTP reporting
 
 ### v0.8
 

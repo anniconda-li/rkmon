@@ -10,49 +10,13 @@
 #include <string.h>
 #include <unistd.h>
 
+#include "collect.h"
+#include "net.h"
+#include "output.h"
 #include "rkmon.h"
 
 #define WATCH_MAX_INTERVAL 3600
 #define UDP_MAX_PORT 65535
-
-/**
- * @brief 输出完整系统状态。
- */
-static void print_all_info(void)
-{
-    print_version();
-    printf("====================\n");
-
-    print_hostname();
-    print_soc_temp();
-    print_uptime();
-    print_loadavg();
-    print_memory();
-    print_disk_root();
-    print_wlan0_state();
-    print_wlan0_ip();
-    print_gateway();
-}
-
-/**
- * @brief 输出系统基础信息。
- */
-static void print_system_info(void)
-{
-    print_hostname();
-    print_uptime();
-    print_loadavg();
-}
-
-/**
- * @brief 输出网络状态信息。
- */
-static void print_network_info(void)
-{
-    print_wlan0_state();
-    print_wlan0_ip();
-    print_gateway();
-}
 
 /**
  * @brief 解析 --watch 的刷新间隔。
@@ -131,11 +95,14 @@ static int parse_port(const char *s, unsigned short *port)
  */
 static void watch_all_info(unsigned int interval)
 {
+    RkmonStatus status;
+
     printf("\033[2J\033[H");
 
     while (1) {
         printf("\033[H");
-        print_all_info();
+        rkmon_collect(&status);
+        rkmon_print_text(&status);
         fflush(stdout);
         sleep(interval);
     }
@@ -152,10 +119,13 @@ int main(int argc, char *argv[])
 {
     unsigned int interval;
     unsigned short port;
+    RkmonStatus status;
+    char json[4096];
     int ret;
 
     if (argc == 1) {
-        print_all_info();
+        rkmon_collect(&status);
+        rkmon_print_text(&status);
         return 0;
     }
 
@@ -178,7 +148,13 @@ int main(int argc, char *argv[])
             return 1;
         }
 
-        ret = send_udp_report(argv[2], port);
+        rkmon_collect(&status);
+        if (rkmon_build_json(&status, json, sizeof(json)) < 0) {
+            fprintf(stderr, "failed to build JSON\n");
+            return 1;
+        }
+
+        ret = rkmon_send_udp_report(argv[2], port, json);
         if (ret < 0) {
             fprintf(stderr, "failed to send UDP report\n");
             return 1;
@@ -213,42 +189,48 @@ int main(int argc, char *argv[])
     }
 
     if (strcmp(argv[1], "--help") == 0) {
-        print_help();
+        rkmon_print_help();
         return 0;
     }
 
     if (strcmp(argv[1], "--version") == 0) {
-        print_version();
+        rkmon_print_version();
         return 0;
     }
 
     if (strcmp(argv[1], "--system") == 0) {
-        print_system_info();
+        rkmon_collect(&status);
+        rkmon_print_system(&status);
         return 0;
     }
 
     if (strcmp(argv[1], "--network") == 0) {
-        print_network_info();
+        rkmon_collect(&status);
+        rkmon_print_network(&status);
         return 0;
     }
 
     if (strcmp(argv[1], "--temp") == 0) {
-        print_soc_temp();
+        rkmon_collect(&status);
+        rkmon_print_temp(&status);
         return 0;
     }
 
     if (strcmp(argv[1], "--memory") == 0) {
-        print_memory();
+        rkmon_collect(&status);
+        rkmon_print_memory(&status);
         return 0;
     }
 
     if (strcmp(argv[1], "--disk") == 0) {
-        print_disk_root();
+        rkmon_collect(&status);
+        rkmon_print_disk(&status);
         return 0;
     }
 
     if (strcmp(argv[1], "--json") == 0) {
-        print_json();
+        rkmon_collect(&status);
+        rkmon_print_json(&status);
         return 0;
     }
 
